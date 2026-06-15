@@ -1,0 +1,8 @@
+Incident Type,Declarations,Mean Latency (days),Median Latency (days),% of Total,Cumulative %
+Severe Storm(s),12597,34.4,30.0,44.5,44.5
+Hurricane,4466,12.1,5.0,15.8,60.3
+Biological,4156,70.9,71.0,14.7,75.0
+Flood,2886,43.4,45.0,10.2,85.2
+Severe Ice Storm,1578,24.7,17.0,5.6,90.8
+Other (combined),2651,38.2,36.6,9.3,100.0
+TOTAL,28334,37.3,35.0,100.0,100.0

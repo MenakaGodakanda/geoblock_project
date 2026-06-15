@@ -1,0 +1,13 @@
+Table 2. Assistance Programme Activation Rates by Incident Type (Major Disasters 2000–2024)
+--------------------------------------------------------------------------------
+         Incident Type     n  IA Rate (%)  PA Rate (%)  HM Rate (%)  IA–PA Gap (pp)
+             Hurricane  4466         44.5         96.5         99.1            52.0
+                 Flood  2886         25.2         95.8         96.5            70.6
+       Severe Storm(s) 12597         30.8         88.4         95.3            57.6
+               Tornado   393         38.7         73.0         93.9            34.3
+         Fire/Wildfire   895         19.4         81.2         83.4            61.8
+All Major Declarations 28334         40.2         91.6         95.4            51.4
+--------------------------------------------------------------------------------
+IA = Individual Assistance; PA = Public Assistance; HM = Hazard Mitigation.
+pp = percentage points gap between PA and IA rates.
+Source: Authors' analysis of OpenFEMA Disaster Declarations Summaries v2.
