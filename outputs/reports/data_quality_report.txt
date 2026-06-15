@@ -1,0 +1,28 @@
+============================================================
+DATA QUALITY REPORT — GeoBlock-DRS Pipeline
+Generated: 2026-06-16T05:44:29.871171
+============================================================
+
+[1] RAW DATA
+    Rows    : 69,935
+    Columns : 28
+
+[2] DATE PARSING — null counts after parse:
+    declarationDate           : 0 nulls
+    incidentBeginDate         : 0 nulls
+    incidentEndDate           : 515 nulls
+
+[3] LATENCY — rows removed (outside 0–90 days): 1,932
+    Remaining rows: 68,003
+
+[4] FILTER
+    Declaration type  : DR (major disasters only)
+    Year range        : 2000–2024
+    Rows after filter : 28,334
+
+[5] MISSING VALUES (after cleaning)
+
+[6] FINAL CLEAN DATASET
+    Rows    : 28,334
+    Columns : 18
+    Columns : disasterNumber, state, designatedArea, incidentType, incidentType_clean, declarationDate, incidentBeginDate, incidentEndDate, declaration_year, cohort_5yr, decade, response_latency_days, ia_flag, pa_flag, hm_flag, fipsStateCode, fipsCountyCode, placeCode
