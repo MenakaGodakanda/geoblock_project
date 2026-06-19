@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """
-Script 04 — Response Latency Cohort Analysis (Table 3 + Figure 5A)
-===================================================================
+Script 04 — Response Latency Cohort Analysis (Table 3)
+=======================================================
 GeoBlock-DRS Research Pipeline | SIET 2026
 
 Produces Table 3 from the paper:
-  "Mean Declaration Response Latency by Five-Year Cohort (2000–2024)"
+  "Declaration Response Latency by Five-Year Cohort (2000–2025)"
 
-And the Figure 5A latency trend line chart.
+The final cohort (2020–2025) spans six years to include the most recent
+complete calendar year available in the OpenFEMA dataset at the time
+of analysis. All other cohorts span five years.
 
-Computes:
-  - Mean and median latency per 5-year cohort
-  - Declaration count per cohort
-  - Statistical significance of latency trend (Mann-Kendall test)
-  - Latency breakdown by incident type × cohort (heatmap)
-
-Outputs:
+Outputs
+-------
   outputs/tables/table3_latency_cohorts.csv
   outputs/tables/table3_latency_cohorts.txt
   outputs/figures/fig_latency_trend.png
@@ -27,195 +24,199 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 import os
 from scipy import stats
 
 # ── Configuration ────────────────────────────────────────────────────
-CLEAN_FILE = "data/clean_declarations.csv"
-FIG_DIR    = "outputs/figures"
-TBL_DIR    = "outputs/tables"
+CLEAN_FILE    = "data/clean_declarations.csv"
+FIG_DIR       = "outputs/figures"
+TBL_DIR       = "outputs/tables"
 
-COHORT_ORDER = ["2000–2004", "2005–2009", "2010–2014", "2015–2019", "2020–2024"]
-COLORS       = {
+# Final cohort is 2020–2025 (six years) — all others are five years
+COHORT_ORDER  = ["2000–2004", "2005–2009", "2010–2014", "2015–2019", "2020–2025"]
+CRITICAL_DAYS = 3.0    # 72-hour survivability threshold in days
+
+COLOURS = {
     "mean":   "#185FA5",
     "median": "#5DCAA5",
     "72hr":   "#D85A30",
-    "smart":  "#1D9E75",
+    "target": "#1D9E75",
 }
+
 TOP_TYPES = ["Severe Storm(s)", "Flood", "Hurricane", "Tornado", "Fire/Wildfire"]
 
-# ── Helpers ──────────────────────────────────────────────────────────
-def log(msg): print(f"  {msg}", flush=True)
 
-# ── Main ─────────────────────────────────────────────────────────────
-def main():
+def log(msg: str) -> None:
+    print(f"  {msg}", flush=True)
+
+
+def main() -> None:
     os.makedirs(FIG_DIR, exist_ok=True)
     os.makedirs(TBL_DIR, exist_ok=True)
-
-    print("\n=== SCRIPT 04 — Response Latency Cohort Analysis ===\n")
+    print("\n=== Script 04 — Response Latency Cohort Analysis ===\n")
 
     df = pd.read_csv(CLEAN_FILE, low_memory=False)
-    df["declarationDate"] = pd.to_datetime(df["declarationDate"], errors="coerce")
     log(f"Loaded {len(df):,} records")
 
-    # ── Ensure cohort column is present ──────────────────────────────
-    if "cohort_5yr" not in df.columns:
-        df["declaration_year"] = df["declarationDate"].dt.year
-        def cohort_label(y):
-            b = (y - 2000) // 5 * 5 + 2000
-            return f"{b}–{b+4}"
-        df["cohort_5yr"] = df["declaration_year"].apply(cohort_label)
+    # ── Build cohort aggregation ──────────────────────────────────────
+    grp = (
+        df.groupby("cohort_5yr")["response_latency_days"]
+        .agg(
+            mean_latency   = "mean",
+            median_latency = "median",
+            std_latency    = "std",
+            n_declarations = "count",
+        )
+        .reset_index()
+    )
+    grp.columns = ["Cohort", "Mean (d)", "Median (d)", "Std Dev (d)", "n"]
 
-    # ── Table 3 — latency by cohort ───────────────────────────────────
-    grp = df.groupby("cohort_5yr")["response_latency_days"].agg(
-        mean_latency   = "mean",
-        median_latency = "median",
-        std_latency    = "std",
-        n_declarations = "count",
-    ).reset_index()
-    grp.columns = ["Cohort", "Mean Latency (days)", "Median Latency (days)",
-                   "Std Dev (days)", "n Declarations"]
-
-    # Re-order cohorts
-    grp["_sort"] = grp["Cohort"].map({c: i for i, c in enumerate(COHORT_ORDER)})
-    grp = grp.sort_values("_sort").drop("_sort", axis=1).reset_index(drop=True)
-    grp["Mean Latency (days)"]   = grp["Mean Latency (days)"].round(1)
-    grp["Median Latency (days)"] = grp["Median Latency (days)"].round(1)
-    grp["Std Dev (days)"]        = grp["Std Dev (days)"].round(1)
+    # Sort by COHORT_ORDER — only keep cohorts in the expected list
+    sort_map = {c: i for i, c in enumerate(COHORT_ORDER)}
+    grp["_sort"] = grp["Cohort"].map(sort_map)
+    grp = (
+        grp[grp["_sort"].notna()]
+        .sort_values("_sort")
+        .drop(columns=["_sort"])
+        .reset_index(drop=True)
+    )
+    for col in ["Mean (d)", "Median (d)", "Std Dev (d)"]:
+        grp[col] = grp[col].round(2)
 
     print(grp.to_string(index=False))
 
+    # ── Save table ────────────────────────────────────────────────────
     grp.to_csv(f"{TBL_DIR}/table3_latency_cohorts.csv", index=False)
-    with open(f"{TBL_DIR}/table3_latency_cohorts.txt", "w") as f:
-        f.write("Table 3. Mean Declaration Response Latency by Five-Year Cohort (2000–2024)\n")
-        f.write("-" * 72 + "\n")
-        f.write(grp.to_string(index=False))
-        f.write("\n" + "-" * 72)
-        f.write("\nSource: Authors' analysis of OpenFEMA Disaster Declarations Summaries v2.\n")
-    log(f"Saved Table 3 → {TBL_DIR}/table3_latency_cohorts.csv")
+    with open(f"{TBL_DIR}/table3_latency_cohorts.txt", "w") as fh:
+        fh.write(
+            "Table 3. Declaration Response Latency by Cohort (2000–2025)\n"
+            + "-" * 72 + "\n"
+        )
+        fh.write(grp.to_string(index=False))
+        fh.write(
+            "\n" + "-" * 72
+            + "\nSource: Authors' analysis of OpenFEMA Disaster Declarations "
+              "Summaries v2.\n"
+            + "Note: The 2020–2025 cohort spans six years (2020–2024 plus 2025)\n"
+            + "to include the most recent complete calendar year available.\n"
+        )
+    log(f"Saved table → {TBL_DIR}/table3_latency_cohorts.csv")
 
-    # ── Mann-Kendall trend test on mean latency ───────────────────────
-    mean_vals = grp["Mean Latency (days)"].values
-    slope, intercept, r, p, se = stats.linregress(range(len(mean_vals)), mean_vals)
-    log(f"Trend: slope={slope:.2f} days/cohort, R²={r**2:.3f}, p={p:.4f}")
+    # ── Linear trend test ─────────────────────────────────────────────
+    mean_vals = grp["Mean (d)"].values
+    x_trend   = np.arange(len(mean_vals))
+    slope, intercept, r_val, p_val, _ = stats.linregress(x_trend, mean_vals)
+    log(f"Trend: slope={slope:.2f} d/cohort  R²={r_val**2:.3f}  p={p_val:.4f}")
 
-    # ── Figure: Latency trend ─────────────────────────────────────────
+    # Projection: how many more cohorts to reach 3-day threshold?
+    if slope < 0:
+        cohorts_to_threshold = (CRITICAL_DAYS - intercept) / slope
+        proj_year = 2000 + cohorts_to_threshold * 5
+        log(f"Projected year to reach {CRITICAL_DAYS}-day threshold: ~{proj_year:.0f}")
+
+    # ── Figure A — latency trend line ─────────────────────────────────
+    x     = np.arange(len(grp))
+    mean  = grp["Mean (d)"].values
+    med   = grp["Median (d)"].values
+    std   = grp["Std Dev (d)"].values
+
     fig, ax = plt.subplots(figsize=(10, 5.5))
 
-    x    = np.arange(len(grp))
-    mean = grp["Mean Latency (days)"].values
-    med  = grp["Median Latency (days)"].values
-    std  = grp["Std Dev (days)"].values
-
-    # Shaded ±1 std dev band for mean
     ax.fill_between(x, mean - std * 0.5, mean + std * 0.5,
-                    color=COLORS["mean"], alpha=0.10, label="±0.5 SD band (mean)")
+                    color=COLOURS["mean"], alpha=0.10, label="±0.5 SD (mean)")
+    ax.plot(x, mean, "o-", color=COLOURS["mean"], lw=2.5, ms=8,
+            mfc="white", mew=2.0, label="Mean latency (days)", zorder=5)
+    ax.plot(x, med, "s--", color=COLOURS["median"], lw=1.8, ms=6,
+            mfc="white", mew=1.5, label="Median latency (days)", zorder=4)
 
-    # Mean and median lines
-    ax.plot(x, mean, "o-", color=COLORS["mean"], linewidth=2.5, markersize=8,
-            markerfacecolor="white", markeredgewidth=2, label="Mean latency (days)", zorder=5)
-    ax.plot(x, med,  "s--", color=COLORS["median"], linewidth=1.8, markersize=6,
-            markerfacecolor="white", markeredgewidth=1.5, label="Median latency (days)", zorder=4)
-
-    # Value annotations
     for i, (m, md) in enumerate(zip(mean, med)):
         ax.annotate(f"{m:.1f}", (x[i], m), textcoords="offset points",
-                    xytext=(0, 10), ha="center", fontsize=9.5, fontweight="bold",
-                    color=COLORS["mean"])
+                    xytext=(0, 10), ha="center", fontsize=9.5,
+                    fontweight="bold", color=COLOURS["mean"])
         ax.annotate(f"{md:.1f}", (x[i], md), textcoords="offset points",
-                    xytext=(0, -15), ha="center", fontsize=8.5, color=COLORS["median"])
+                    xytext=(0, -15), ha="center", fontsize=8.5,
+                    color=COLOURS["median"])
 
-    # 72-hour critical window line
-    ax.axhline(3, color=COLORS["72hr"], linestyle=":", linewidth=1.6,
-               label="72-hr critical window (3 days)", zorder=3)
+    # 72-hour critical window (3 days)
+    ax.axhline(CRITICAL_DAYS, color=COLOURS["72hr"], linestyle=":",
+               lw=1.6, label=f"72-hr critical window ({CRITICAL_DAYS} days)", zorder=3)
 
-    # GeoBlock-DRS target line (seconds converted to fractional days)
-    smartcontract_days = 5 / 86400  # 5 seconds
-    ax.axhline(smartcontract_days, color=COLORS["smart"], linestyle="-.", linewidth=1.4,
-               label=f"GeoBlock-DRS target (~5 s = {smartcontract_days*86400:.0f}s)", zorder=3)
+    # GeoBlock-DRS target (~6.3 s = near-zero on day scale)
+    sc_days = 6.3 / 86400
+    ax.axhline(sc_days, color=COLOURS["target"], linestyle="-.", lw=1.4,
+               label="GeoBlock-DRS target (6.3 s ≈ 0.000073 d)", zorder=3)
 
     # Trend line
-    trend_y = intercept + slope * x
-    ax.plot(x, trend_y, "-", color="#aaa", linewidth=1.2, linestyle=(0, (3,5)),
-            label=f"Linear trend (slope={slope:.2f} d/cohort, p={p:.3f})", zorder=2)
+    trend_y = intercept + slope * x_trend
+    ax.plot(x, trend_y, color="#aaa", lw=1.2, linestyle=(0, (3, 5)),
+            label=f"Linear trend (slope={slope:.2f} d/cohort, p={p_val:.3f})")
 
     ax.set_xticks(x)
     ax.set_xticklabels(COHORT_ORDER, fontsize=10)
-    ax.set_xlabel("Five-Year Cohort", fontsize=11)
+    ax.set_xlabel("Cohort", fontsize=11)
     ax.set_ylabel("Response Latency (days)", fontsize=11)
-    ax.set_title("Figure 5A — Declaration Response Latency by Cohort (2000–2024)\n"
-                 "OpenFEMA Major Disaster Declarations",
-                 fontsize=12, fontweight="bold")
+    ax.set_title(
+        "Figure 3 — Declaration Response Latency by Cohort (2000–2025)\n"
+        "OpenFEMA Major Disaster Declarations",
+        fontsize=12, fontweight="bold",
+    )
     ax.set_ylim(0, max(mean) * 1.25)
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.legend(fontsize=8.5, loc="upper right", framealpha=0.9)
 
-    # n= labels at bottom of each cohort
     for i, row in grp.iterrows():
-        ax.text(i, -1.5, f"n={row['n Declarations']:,}", ha="center",
-                fontsize=8, color="#666")
+        ax.text(i, -1.8, f"n={int(row['n']):,}", ha="center",
+                fontsize=7.5, color="#666")
 
     plt.tight_layout()
-    out_path = f"{FIG_DIR}/fig_latency_trend.png"
-    plt.savefig(out_path, dpi=180, bbox_inches="tight",
-                facecolor="white", edgecolor="none")
+    out1 = f"{FIG_DIR}/fig_latency_trend.png"
+    plt.savefig(out1, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close()
-    log(f"Saved figure → {out_path}")
+    log(f"Saved → {out1}")
 
-    # ── Figure: Heatmap — latency by incident type × cohort ──────────
-    it_col = "incidentType_clean" if "incidentType_clean" in df.columns else "incidentType"
-    df_top = df[df[it_col].isin(TOP_TYPES)].copy()
-
-    pivot = df_top.pivot_table(
-        index=it_col,
-        columns="cohort_5yr",
-        values="response_latency_days",
-        aggfunc="mean",
+    # ── Figure B — incident type × cohort heatmap ─────────────────────
+    it_col  = "incidentType_clean" if "incidentType_clean" in df.columns else "incidentType"
+    df_top  = df[df[it_col].isin(TOP_TYPES)].copy()
+    pivot   = df_top.pivot_table(
+        index=it_col, columns="cohort_5yr",
+        values="response_latency_days", aggfunc="mean",
     ).round(1)
-
-    # Reorder
     pivot = pivot[[c for c in COHORT_ORDER if c in pivot.columns]]
     pivot = pivot.reindex([t for t in TOP_TYPES if t in pivot.index])
 
     fig2, ax2 = plt.subplots(figsize=(10, 4.5))
-    import matplotlib.colors as mcolors
-
-    cmap = plt.cm.Blues
-    im = ax2.imshow(pivot.values, cmap=cmap, aspect="auto",
-                    vmin=0, vmax=20)
-
+    im = ax2.imshow(pivot.values, cmap="Blues", aspect="auto", vmin=0, vmax=20)
     ax2.set_xticks(range(pivot.shape[1]))
     ax2.set_xticklabels(pivot.columns, fontsize=10)
     ax2.set_yticks(range(pivot.shape[0]))
     ax2.set_yticklabels(pivot.index, fontsize=10)
-    ax2.set_title("Mean Response Latency (days) — Incident Type × Cohort Heatmap",
-                  fontsize=12, fontweight="bold")
-
-    # Cell annotations
+    ax2.set_title(
+        "Mean Response Latency (days) — Incident Type × Cohort Heatmap",
+        fontsize=12, fontweight="bold",
+    )
     for r in range(pivot.shape[0]):
         for c in range(pivot.shape[1]):
             val = pivot.values[r, c]
             if not np.isnan(val):
-                col = "white" if val > 12 else "black"
+                colour = "white" if val > 12 else "black"
                 ax2.text(c, r, f"{val:.1f}", ha="center", va="center",
-                         fontsize=10, fontweight="bold", color=col)
-
+                         fontsize=10, fontweight="bold", color=colour)
     cbar = plt.colorbar(im, ax=ax2, shrink=0.85)
     cbar.set_label("Mean latency (days)", fontsize=9)
     cbar.ax.tick_params(labelsize=8)
-
     plt.tight_layout()
-    out_path2 = f"{FIG_DIR}/fig_latency_heatmap.png"
-    plt.savefig(out_path2, dpi=180, bbox_inches="tight",
-                facecolor="white", edgecolor="none")
+    out2 = f"{FIG_DIR}/fig_latency_heatmap.png"
+    plt.savefig(out2, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close()
-    log(f"Saved heatmap → {out_path2}")
+    log(f"Saved → {out2}")
 
-    print(f"\n✓ Latency analysis complete.")
-    print(f"  Mean latency trend: {mean[0]} → {mean[-1]} days over 5 cohorts.")
-    print(f"  Linear slope = {slope:.2f} days/cohort (p = {p:.4f})")
+    print(
+        f"\n✓ Latency analysis complete."
+        f"\n  Mean trend: {mean[0]:.1f} → {mean[-1]:.1f} days"
+        f"\n  Slope = {slope:.2f} d/cohort  (p = {p_val:.4f})"
+    )
+
 
 if __name__ == "__main__":
     main()
