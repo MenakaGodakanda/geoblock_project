@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Script 05 — Assistance Activation Rate Analysis (Table 2 + Figure 4B)
-======================================================================
+Script 05 — Assistance Activation Rate Analysis (Table 2)
+==========================================================
 GeoBlock-DRS Research Pipeline | SIET 2026
 
 Produces Table 2 from the paper:
-  "Assistance Programme Activation Rates by Incident Type (2000–2024)"
+  "Assistance Programme Activation Rates by Incident Type (2000–2025)"
 
 Computes IA, PA, and HM activation rates per incident type and overall,
-and exposes the systematic IA–PA gap documented in the paper.
+and quantifies the IA–PA gap that motivates the ResourceAllocation
+smart contract's equity weight correction.
 
-Outputs:
+Outputs
+-------
   outputs/tables/table2_activation_rates.csv
   outputs/tables/table2_activation_rates.txt
   outputs/figures/fig_activation_gap.png
@@ -25,198 +27,215 @@ import matplotlib.pyplot as plt
 import os
 
 # ── Configuration ────────────────────────────────────────────────────
-CLEAN_FILE = "data/clean_declarations.csv"
-FIG_DIR    = "outputs/figures"
-TBL_DIR    = "outputs/tables"
+CLEAN_FILE   = "data/clean_declarations.csv"
+FIG_DIR      = "outputs/figures"
+TBL_DIR      = "outputs/tables"
+COHORT_ORDER = ["2000–2004", "2005–2009", "2010–2014", "2015–2019", "2020–2025"]
+TOP_TYPES    = ["Hurricane", "Flood", "Severe Storm(s)", "Tornado", "Fire/Wildfire"]
 
-TOP_TYPES = ["Hurricane", "Flood", "Severe Storm(s)", "Tornado", "Fire/Wildfire"]
-
-COLORS = {
+COLOURS = {
     "ia":  "#185FA5",
     "pa":  "#EF9F27",
     "hm":  "#1D9E75",
     "gap": "#D85A30",
 }
 
-# ── Helpers ──────────────────────────────────────────────────────────
-def log(msg): print(f"  {msg}", flush=True)
 
-def activation_rate(series):
-    """Compute activation rate as percentage of True values."""
-    return series.sum() / len(series) * 100
+def log(msg: str) -> None:
+    print(f"  {msg}", flush=True)
 
-# ── Main ─────────────────────────────────────────────────────────────
-def main():
+
+def activation_rate(series: pd.Series) -> float:
+    """Return activation rate as a percentage."""
+    return round(series.sum() / max(len(series), 1) * 100, 1)
+
+
+def main() -> None:
     os.makedirs(FIG_DIR, exist_ok=True)
     os.makedirs(TBL_DIR, exist_ok=True)
+    print("\n=== Script 05 — Assistance Activation Rate Analysis ===\n")
 
-    print("\n=== SCRIPT 05 — Assistance Activation Rate Analysis ===\n")
-
-    df = pd.read_csv(CLEAN_FILE, low_memory=False)
+    df    = pd.read_csv(CLEAN_FILE, low_memory=False)
+    it_col = "incidentType_clean" if "incidentType_clean" in df.columns else "incidentType"
     log(f"Loaded {len(df):,} records")
 
-    it_col = "incidentType_clean" if "incidentType_clean" in df.columns else "incidentType"
-
-    # ── Compute rates per incident type ───────────────────────────────
+    # ── Table 2 — rates per incident type ────────────────────────────
     rows = []
     for t in TOP_TYPES:
         sub = df[df[it_col] == t]
         if len(sub) == 0:
             continue
         row = {
-            "Incident Type":    t,
-            "n":                len(sub),
-            "IA Rate (%)":      round(activation_rate(sub["ia_flag"]), 1),
-            "PA Rate (%)":      round(activation_rate(sub["pa_flag"]), 1),
-            "HM Rate (%)":      round(activation_rate(sub["hm_flag"]), 1),
+            "Incident Type": t,
+            "n":             len(sub),
+            "IA Rate (%)":   activation_rate(sub["ia_flag"]),
+            "PA Rate (%)":   activation_rate(sub["pa_flag"]),
+            "HM Rate (%)":   activation_rate(sub["hm_flag"]),
         }
         row["IA–PA Gap (pp)"] = round(row["PA Rate (%)"] - row["IA Rate (%)"], 1)
         rows.append(row)
 
-    # All major declarations row
     all_row = {
-        "Incident Type":    "All Major Declarations",
-        "n":                len(df),
-        "IA Rate (%)":      round(activation_rate(df["ia_flag"]), 1),
-        "PA Rate (%)":      round(activation_rate(df["pa_flag"]), 1),
-        "HM Rate (%)":      round(activation_rate(df["hm_flag"]), 1),
+        "Incident Type":  "All Major Declarations",
+        "n":              len(df),
+        "IA Rate (%)":    activation_rate(df["ia_flag"]),
+        "PA Rate (%)":    activation_rate(df["pa_flag"]),
+        "HM Rate (%)":    activation_rate(df["hm_flag"]),
     }
     all_row["IA–PA Gap (pp)"] = round(all_row["PA Rate (%)"] - all_row["IA Rate (%)"], 1)
     rows.append(all_row)
 
     table = pd.DataFrame(rows)
-
     print(table.to_string(index=False))
 
     # ── Save ─────────────────────────────────────────────────────────
     table.to_csv(f"{TBL_DIR}/table2_activation_rates.csv", index=False)
-    with open(f"{TBL_DIR}/table2_activation_rates.txt", "w") as f:
-        f.write("Table 2. Assistance Programme Activation Rates by Incident Type (Major Disasters 2000–2024)\n")
-        f.write("-" * 80 + "\n")
-        f.write(table.to_string(index=False))
-        f.write("\n" + "-" * 80)
-        f.write("\nIA = Individual Assistance; PA = Public Assistance; HM = Hazard Mitigation.\n")
-        f.write("pp = percentage points gap between PA and IA rates.\n")
-        f.write("Source: Authors' analysis of OpenFEMA Disaster Declarations Summaries v2.\n")
-    log(f"Saved Table 2 → {TBL_DIR}/table2_activation_rates.csv")
+    with open(f"{TBL_DIR}/table2_activation_rates.txt", "w") as fh:
+        fh.write(
+            "Table 2. Assistance Programme Activation Rates by Incident Type "
+            "(Major Disasters 2000–2025)\n" + "-" * 84 + "\n"
+        )
+        fh.write(table.to_string(index=False))
+        fh.write(
+            "\n" + "-" * 84
+            + "\nIA = Individual Assistance; PA = Public Assistance; "
+              "HM = Hazard Mitigation.\n"
+            + "pp = percentage-point gap between PA and IA rates.\n"
+            + "Source: Authors' analysis of OpenFEMA Disaster Declarations "
+              "Summaries v2.\n"
+        )
+    log(f"Saved → {TBL_DIR}/table2_activation_rates.csv")
 
-    # ── Figure A: Grouped bar chart ───────────────────────────────────
+    # ── Figure A — grouped bar chart ──────────────────────────────────
+    types_plot = [r["Incident Type"] for r in rows
+                  if r["Incident Type"] != "All Major Declarations"]
+    n  = len(types_plot)
+    x  = np.arange(n)
+    w  = 0.26
+
+    ia_vals = [r["IA Rate (%)"]  for r in rows if r["Incident Type"] != "All Major Declarations"]
+    pa_vals = [r["PA Rate (%)"]  for r in rows if r["Incident Type"] != "All Major Declarations"]
+    hm_vals = [r["HM Rate (%)"]  for r in rows if r["Incident Type"] != "All Major Declarations"]
+
     fig, ax = plt.subplots(figsize=(12, 6))
-    types_plot = table[table["Incident Type"] != "All Major Declarations"]["Incident Type"].tolist()
-    n = len(types_plot)
-    x = np.arange(n)
-    w = 0.26
 
-    ia_vals = table[table["Incident Type"].isin(types_plot)]["IA Rate (%)"].values
-    pa_vals = table[table["Incident Type"].isin(types_plot)]["PA Rate (%)"].values
-    hm_vals = table[table["Incident Type"].isin(types_plot)]["HM Rate (%)"].values
+    b1 = ax.bar(x - w, ia_vals, width=w, color=COLOURS["ia"],
+                label="Individual Assistance (IA)", edgecolor="white", lw=0.5)
+    b2 = ax.bar(x,     pa_vals, width=w, color=COLOURS["pa"],
+                label="Public Assistance (PA)",     edgecolor="white", lw=0.5)
+    b3 = ax.bar(x + w, hm_vals, width=w, color=COLOURS["hm"],
+                label="Hazard Mitigation (HM)",     edgecolor="white", lw=0.5)
 
-    b1 = ax.bar(x - w, ia_vals, width=w, color=COLORS["ia"], label="Individual Assistance (IA)",
-                edgecolor="white", linewidth=0.5)
-    b2 = ax.bar(x,     pa_vals, width=w, color=COLORS["pa"], label="Public Assistance (PA)",
-                edgecolor="white", linewidth=0.5)
-    b3 = ax.bar(x + w, hm_vals, width=w, color=COLORS["hm"], label="Hazard Mitigation (HM)",
-                edgecolor="white", linewidth=0.5)
-
-    # Value labels
     for bar, val in zip(list(b1) + list(b2) + list(b3),
-                        list(ia_vals) + list(pa_vals) + list(hm_vals)):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.8,
-                f"{val:.0f}%", ha="center", va="bottom", fontsize=8, color="#333")
+                        ia_vals + pa_vals + hm_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.8,
+                f"{val:.0f}%", ha="center", va="bottom",
+                fontsize=8, color="#333")
 
-    # Annotate IA–PA gap for Flood (most illustrative)
-    flood_idx = types_plot.index("Flood") if "Flood" in types_plot else 1
-    flood_ia  = ia_vals[flood_idx]
-    flood_pa  = pa_vals[flood_idx]
-    ax.annotate("", xy=(x[flood_idx], flood_pa - 1),
-                xytext=(x[flood_idx] - w, flood_ia + 1),
-                arrowprops=dict(arrowstyle="<->", color=COLORS["gap"], lw=1.5))
-    ax.text(x[flood_idx] - w*1.5, (flood_ia + flood_pa)/2,
-            f"Gap\n{flood_pa - flood_ia:.0f}pp", ha="center", va="center",
-            fontsize=8, color=COLORS["gap"], fontweight="bold")
+    # Annotate IA–PA gap on the Flood bar (most representative)
+    flood_i = types_plot.index("Flood") if "Flood" in types_plot else 1
+    gap_val = round(pa_vals[flood_i] - ia_vals[flood_i], 1)
+    ax.annotate("", xy=(x[flood_i], pa_vals[flood_i] - 1),
+                xytext=(x[flood_i] - w, ia_vals[flood_i] + 1),
+                arrowprops=dict(arrowstyle="<->", color=COLOURS["gap"], lw=1.5))
+    ax.text(x[flood_i] - w * 1.6, (ia_vals[flood_i] + pa_vals[flood_i]) / 2,
+            f"Gap\n{gap_val:.0f} pp", ha="center", va="center",
+            fontsize=8, color=COLOURS["gap"], fontweight="bold")
 
-    # Mean reference lines
-    ax.axhline(all_row["IA Rate (%)"], color=COLORS["ia"], linestyle="--",
-               linewidth=1.2, alpha=0.6, label=f'Mean IA = {all_row["IA Rate (%)"]:.1f}%')
-    ax.axhline(all_row["PA Rate (%)"], color=COLORS["pa"], linestyle="--",
-               linewidth=1.2, alpha=0.6, label=f'Mean PA = {all_row["PA Rate (%)"]:.1f}%')
+    # Overall mean reference lines
+    ax.axhline(all_row["IA Rate (%)"], color=COLOURS["ia"], linestyle="--",
+               lw=1.2, alpha=0.6, label=f'Mean IA = {all_row["IA Rate (%)"]}%')
+    ax.axhline(all_row["PA Rate (%)"], color=COLOURS["pa"], linestyle="--",
+               lw=1.2, alpha=0.6, label=f'Mean PA = {all_row["PA Rate (%)"]}%')
 
     ax.set_xticks(x)
     ax.set_xticklabels(types_plot, fontsize=10)
     ax.set_ylabel("Activation Rate (%)", fontsize=11)
     ax.set_ylim(0, 115)
-    ax.set_title("Figure 4B — Assistance Programme Activation Rates by Incident Type (2000–2024)\n"
-                 "Source: OpenFEMA Disaster Declarations Summaries v2",
-                 fontsize=12, fontweight="bold")
+    ax.set_title(
+        "Figure 2 — Assistance Programme Activation Rates by Incident Type (2000–2025)\n"
+        "Source: OpenFEMA Disaster Declarations Summaries v2",
+        fontsize=12, fontweight="bold",
+    )
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(axis="y", linestyle="--", alpha=0.35)
     ax.legend(fontsize=9, loc="upper right", framealpha=0.9)
 
     plt.tight_layout()
-    out_path = f"{FIG_DIR}/fig_activation_gap.png"
-    plt.savefig(out_path, dpi=180, bbox_inches="tight",
-                facecolor="white", edgecolor="none")
+    out1 = f"{FIG_DIR}/fig_activation_gap.png"
+    plt.savefig(out1, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close()
-    log(f"Saved figure → {out_path}")
+    log(f"Saved → {out1}")
 
-    # ── Figure B: IA-PA gap trend over cohorts ────────────────────────
+    # ── Figure B — IA/PA gap trend across cohorts ─────────────────────
     if "cohort_5yr" in df.columns:
-        cohort_order = ["2000–2004", "2005–2009", "2010–2014", "2015–2019", "2020–2024"]
-        cgrp = df.groupby("cohort_5yr").agg(
-            ia_rate = ("ia_flag", lambda x: x.sum() / len(x) * 100),
-            pa_rate = ("pa_flag", lambda x: x.sum() / len(x) * 100),
-            hm_rate = ("hm_flag", lambda x: x.sum() / len(x) * 100),
-        ).reset_index()
-        cgrp["_sort"] = cgrp["cohort_5yr"].map({c: i for i, c in enumerate(cohort_order)})
-        cgrp = cgrp.sort_values("_sort").drop("_sort", axis=1)
+        cgrp = (
+            df.groupby("cohort_5yr")
+            .agg(
+                ia_rate=("ia_flag", lambda x: x.sum() / len(x) * 100),
+                pa_rate=("pa_flag", lambda x: x.sum() / len(x) * 100),
+                hm_rate=("hm_flag", lambda x: x.sum() / len(x) * 100),
+            )
+            .reset_index()
+        )
+        cgrp["_sort"] = cgrp["cohort_5yr"].map(
+            {c: i for i, c in enumerate(COHORT_ORDER)}
+        )
+        cgrp = (
+            cgrp[cgrp["_sort"].notna()]
+            .sort_values("_sort")
+            .drop(columns=["_sort"])
+            .reset_index(drop=True)
+        )
 
-        fig2, ax3 = plt.subplots(figsize=(10, 5))
         c_x = np.arange(len(cgrp))
-        ax3.plot(c_x, cgrp["pa_rate"].values, "o-", color=COLORS["pa"],
-                 linewidth=2.5, markersize=7, label="PA activation rate (%)",
-                 markerfacecolor="white", markeredgewidth=2)
-        ax3.plot(c_x, cgrp["ia_rate"].values, "s--", color=COLORS["ia"],
-                 linewidth=2.5, markersize=7, label="IA activation rate (%)",
-                 markerfacecolor="white", markeredgewidth=2)
-        ax3.plot(c_x, cgrp["hm_rate"].values, "^:", color=COLORS["hm"],
-                 linewidth=1.8, markersize=6, label="HM activation rate (%)",
-                 markerfacecolor="white", markeredgewidth=1.5)
+        fig2, ax3 = plt.subplots(figsize=(10, 5))
 
-        # Fill gap
-        ax3.fill_between(c_x, cgrp["ia_rate"].values, cgrp["pa_rate"].values,
-                         alpha=0.10, color=COLORS["gap"], label="IA–PA gap (pp)")
+        ax3.plot(c_x, cgrp["pa_rate"], "o-", color=COLOURS["pa"],
+                 lw=2.5, ms=7, mfc="white", mew=2, label="PA activation rate (%)")
+        ax3.plot(c_x, cgrp["ia_rate"], "s--", color=COLOURS["ia"],
+                 lw=2.5, ms=7, mfc="white", mew=2, label="IA activation rate (%)")
+        ax3.plot(c_x, cgrp["hm_rate"], "^:", color=COLOURS["hm"],
+                 lw=1.8, ms=6, mfc="white", mew=1.5, label="HM activation rate (%)")
+
+        ax3.fill_between(c_x, cgrp["ia_rate"], cgrp["pa_rate"],
+                         alpha=0.10, color=COLOURS["gap"], label="IA–PA gap")
 
         for i, row in cgrp.iterrows():
-            idx = list(cgrp.index).index(i)
-            ax3.annotate(f"{row['pa_rate']:.0f}%", (idx, row["pa_rate"]),
+            ax3.annotate(f"{row['pa_rate']:.0f}%", (i, row["pa_rate"]),
                          textcoords="offset points", xytext=(0, 7),
-                         ha="center", fontsize=8, color=COLORS["pa"])
-            ax3.annotate(f"{row['ia_rate']:.0f}%", (idx, row["ia_rate"]),
+                         ha="center", fontsize=8, color=COLOURS["pa"])
+            ax3.annotate(f"{row['ia_rate']:.0f}%", (i, row["ia_rate"]),
                          textcoords="offset points", xytext=(0, -14),
-                         ha="center", fontsize=8, color=COLORS["ia"])
+                         ha="center", fontsize=8, color=COLOURS["ia"])
 
         ax3.set_xticks(c_x)
         ax3.set_xticklabels(cgrp["cohort_5yr"].values, fontsize=10)
         ax3.set_ylabel("Activation Rate (%)", fontsize=11)
-        ax3.set_title("IA vs PA Activation Rate Trend by Cohort (2000–2024)\n"
-                      "Shaded region = IA–PA gap",
-                      fontsize=12, fontweight="bold")
+        ax3.set_title(
+            "IA vs PA Activation Rate Trend by Cohort (2000–2025)\n"
+            "Shaded region = IA–PA gap",
+            fontsize=12, fontweight="bold",
+        )
         ax3.set_ylim(0, 115)
         ax3.spines[["top", "right"]].set_visible(False)
         ax3.grid(axis="y", linestyle="--", alpha=0.35)
         ax3.legend(fontsize=9, loc="lower right")
 
         plt.tight_layout()
-        out_path2 = f"{FIG_DIR}/fig_ia_pa_gap_trend.png"
-        plt.savefig(out_path2, dpi=180, bbox_inches="tight",
-                    facecolor="white", edgecolor="none")
+        out2 = f"{FIG_DIR}/fig_ia_pa_gap_trend.png"
+        plt.savefig(out2, dpi=180, bbox_inches="tight", facecolor="white")
         plt.close()
-        log(f"Saved figure → {out_path2}")
+        log(f"Saved → {out2}")
 
-    print(f"\n✓ Activation analysis complete.")
-    print(f"  Overall IA rate: {all_row['IA Rate (%)']}%")
-    print(f"  Overall PA rate: {all_row['PA Rate (%)']}%")
-    print(f"  IA–PA gap      : {all_row['IA–PA Gap (pp)']} percentage points")
+    print(
+        f"\n✓ Activation analysis complete."
+        f"\n  Overall IA rate   : {all_row['IA Rate (%)']}%"
+        f"\n  Overall PA rate   : {all_row['PA Rate (%)']}%"
+        f"\n  IA–PA gap overall : {all_row['IA–PA Gap (pp)']} pp"
+    )
+
 
 if __name__ == "__main__":
     main()
