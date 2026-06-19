@@ -1,0 +1,58 @@
+State,Declarations,Mean Latency (d),IA Rate (%),PA Rate (%),State Name,Rank,Cluster
+TX,2101,27.6,39.8,95.7,Texas,1,Gulf Coast
+KY,1805,35.5,32.5,91.9,Kentucky,2,Appalachian
+MO,1514,39.3,38.2,88.4,Missouri,3,Other
+OK,1336,33.8,29.6,94.4,Oklahoma,4,Other
+FL,1120,16.7,50.6,92.6,Florida,5,Gulf Coast
+KS,1052,53.4,17.4,98.4,Kansas,6,Other
+GA,1034,25.0,38.7,98.1,Georgia,7,Other
+VA,1005,40.3,31.4,95.2,Virginia,8,Appalachian
+IA,996,32.2,36.6,95.1,Iowa,9,Other
+LA,991,17.1,42.6,96.7,Louisiana,10,Gulf Coast
+NE,968,47.1,19.6,98.2,Nebraska,11,Other
+MS,957,30.9,39.6,89.9,Mississippi,12,Gulf Coast
+TN,928,38.0,38.8,95.2,Tennessee,13,Appalachian
+AR,858,34.6,36.4,94.1,Arkansas,14,High SVI
+SD,775,60.2,35.2,83.0,South Dakota,15,Other
+NC,642,23.1,64.0,90.5,North Carolina,16,Appalachian
+WV,639,30.3,43.5,91.9,West Virginia,17,Appalachian
+IN,636,32.3,72.6,67.1,Indiana,18,Other
+AL,630,22.7,51.0,86.0,Alabama,19,Gulf Coast
+MN,626,48.4,24.9,98.4,Minnesota,20,Other
+ND,624,61.2,18.1,97.8,North Dakota,21,Other
+PR,606,19.6,69.8,92.1,PR,22,Other
+NY,606,37.7,35.3,89.1,New York,23,Other
+ME,581,68.0,80.0,99.0,Maine,24,Other
+OH,523,40.4,49.7,71.1,Ohio,25,Other
+IL,485,41.0,50.3,80.8,Illinois,26,Other
+CA,484,45.5,37.2,95.2,California,27,Other
+SC,436,30.0,39.4,92.7,South Carolina,28,Other
+PA,417,30.4,55.4,75.5,Pennsylvania,29,Other
+WI,373,43.1,49.9,83.9,Wisconsin,30,Other
+WA,321,52.5,31.2,85.0,Washington,31,Other
+MT,279,57.8,36.9,79.9,Montana,32,Other
+NM,219,51.5,39.3,90.4,New Mexico,33,High SVI
+NJ,219,27.3,55.7,94.1,New Jersey,34,Other
+AK,215,63.0,54.4,100.0,Alaska,35,High SVI
+VT,213,45.7,25.4,100.0,Vermont,36,Other
+OR,196,52.6,26.5,94.4,Oregon,37,Other
+CO,195,55.4,43.1,68.2,Colorado,38,Other
+MD,182,44.2,26.9,99.5,Maryland,39,Other
+MI,176,56.1,75.6,80.1,Michigan,40,Other
+NH,129,41.2,23.3,99.2,New Hampshire,41,Other
+MA,124,46.8,33.9,81.5,Massachusetts,42,Other
+ID,124,65.2,39.5,83.1,Idaho,43,Other
+AZ,112,57.6,34.8,93.8,Arizona,44,Other
+CT,85,40.6,52.9,87.1,Connecticut,45,Other
+NV,78,61.4,57.7,100.0,Nevada,46,Other
+WY,59,67.2,45.8,98.3,Wyoming,47,Other
+UT,45,70.4,80.0,100.0,Utah,48,Other
+HI,39,39.9,33.3,97.4,Hawaii,49,Other
+RI,37,41.0,43.2,94.6,Rhode Island,50,Other
+AS,31,29.6,67.7,100.0,AS,51,Other
+MP,31,26.9,54.8,100.0,MP,52,Other
+VI,28,31.0,28.6,100.0,VI,53,Other
+DE,21,39.1,33.3,100.0,Delaware,54,Other
+DC,12,42.4,16.7,100.0,District of Columbia,55,Other
+GU,10,31.8,30.0,100.0,GU,56,Other
+FM,6,17.7,16.7,100.0,FM,57,Other

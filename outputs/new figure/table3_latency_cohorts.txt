@@ -1,0 +1,12 @@
+Declaration Response Latency by Cohort (2000–2025)
+------------------------------------------------------------------------
+   Cohort  Mean (d)  Median (d)  Std Dev (d)    n
+2000–2004     20.81        12.0        20.74 5446
+2005–2009     25.11        21.0        20.76 5318
+2010–2014     38.40        40.0        24.20 4850
+2015–2019     40.08        41.0        25.52 4323
+2020–2025     52.80        65.0        27.10 8997
+------------------------------------------------------------------------
+Source: Authors' analysis of OpenFEMA Disaster Declarations Summaries v2.
+Note: The 2020–2025 cohort spans six years (2020–2024 plus 2025)
+to include the most recent complete calendar year available.
