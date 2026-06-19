@@ -1,81 +1,91 @@
 #!/usr/bin/env python3
 """
-Script 01 — Download OpenFEMA Disaster Declarations Summaries v2
-================================================================
+Script 01 — Download Real OpenFEMA Dataset
+==========================================
 GeoBlock-DRS Research Pipeline | SIET 2026
 
-Downloads the OpenFEMA Disaster Declarations Summaries dataset (v2)
-from the official FEMA OpenData API. The dataset is freely available
-with no authentication required.
+Downloads the OpenFEMA Disaster Declarations Summaries v2 dataset
+from the official FEMA OpenData API. Free to access — no API key,
+no registration required.
 
 API endpoint:
   https://www.fema.gov/api/open/v2/disasterDeclarationsSummaries
 
-Output:
-  data/raw_disaster_declarations.csv   (~68,000+ records)
-  data/download_metadata.txt
+The script paginates automatically through all records (typically
+68,000–75,000 rows) at 1,000 records per page with a polite delay
+between requests.
+
+Outputs
+-------
+  data/raw_disaster_declarations.csv   (all records, all years)
+  data/download_metadata.txt           (timestamp, record count, columns)
+
+Usage
+-----
+  python3 scripts/01_download_data.py
+
+Note: Run Script 00 instead if this machine cannot reach the FEMA API.
 """
 
 import requests
 import pandas as pd
 import os
-import sys
 import time
 import json
 from datetime import datetime
 
-# ── Configuration ──────────────────────────────────────────────────
+# ── Configuration ────────────────────────────────────────────────────
 BASE_URL   = "https://www.fema.gov/api/open/v2/disasterDeclarationsSummaries"
-PAGE_SIZE  = 1000          # FEMA API max per page
+PAGE_SIZE  = 1000       # FEMA API maximum records per page
 OUT_DIR    = "data"
 OUT_FILE   = os.path.join(OUT_DIR, "raw_disaster_declarations.csv")
 META_FILE  = os.path.join(OUT_DIR, "download_metadata.txt")
-MAX_PAGES  = 200           # safety cap (~200,000 records max)
-PAUSE_SEC  = 0.4           # polite pause between API calls
+MAX_PAGES  = 200        # safety cap (~200,000 records maximum)
+PAUSE_SEC  = 0.4        # polite pause between API calls
 
-# ── Helpers ─────────────────────────────────────────────────────────
-def log(msg):
+
+def log(msg: str) -> None:
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
 
+
 def fetch_page(skip: int, top: int) -> dict:
-    """Fetch one page from the FEMA OpenData API."""
+    """Fetch one page of records from the FEMA OpenData API."""
     params = {
         "$top":    top,
         "$skip":   skip,
         "$format": "json",
         "$orderby": "declarationDate asc",
     }
-    resp = requests.get(BASE_URL, params=params, timeout=60)
-    resp.raise_for_status()
-    return resp.json()
+    response = requests.get(BASE_URL, params=params, timeout=60)
+    response.raise_for_status()
+    return response.json()
 
-# ── Main ─────────────────────────────────────────────────────────────
-def main():
+
+def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
-    log("Starting OpenFEMA Disaster Declarations download ...")
+    log("Starting OpenFEMA Disaster Declarations Summaries download ...")
 
-    # --- probe total record count --------------------------------
-    probe = fetch_page(skip=0, top=1)
+    # Probe total record count
+    probe       = fetch_page(skip=0, top=1)
     total_count = probe.get("metadata", {}).get("count", None)
     if total_count:
-        log(f"Total records reported by API: {total_count:,}")
+        log(f"Total records available: {total_count:,}")
     else:
         log("Could not read total count; will paginate until empty.")
 
-    # --- paginate ------------------------------------------------
     all_records = []
-    skip = 0
-    page_num = 0
+    skip        = 0
+    page_num    = 0
 
     while page_num < MAX_PAGES:
         page_num += 1
-        log(f"  Fetching page {page_num:>3}  (skip={skip:>6}) ...")
+        log(f"  Page {page_num:>3}  (skip={skip:>6}) ...")
 
         try:
             data = fetch_page(skip=skip, top=PAGE_SIZE)
         except requests.RequestException as exc:
-            log(f"  ERROR on page {page_num}: {exc}. Retrying in 5s ...")
+            log(f"  ERROR on page {page_num}: {exc}. Retrying in 5 s ...")
             time.sleep(5)
             data = fetch_page(skip=skip, top=PAGE_SIZE)
 
@@ -85,7 +95,7 @@ def main():
             break
 
         all_records.extend(records)
-        log(f"  Collected {len(all_records):,} records so far ...")
+        log(f"  Cumulative records: {len(all_records):,}")
 
         if len(records) < PAGE_SIZE:
             log("  Last page reached.")
@@ -94,29 +104,26 @@ def main():
         skip += PAGE_SIZE
         time.sleep(PAUSE_SEC)
 
-    # --- build DataFrame ----------------------------------------
+    # Build DataFrame and save
     log(f"\nBuilding DataFrame from {len(all_records):,} records ...")
     df = pd.DataFrame(all_records)
-    log(f"DataFrame shape: {df.shape}")
-    log(f"Columns: {list(df.columns)}")
-
-    # --- save ----------------------------------------------------
     df.to_csv(OUT_FILE, index=False)
-    log(f"Saved raw CSV → {OUT_FILE}")
+    log(f"Saved → {OUT_FILE}  ({df.shape[0]:,} rows × {df.shape[1]} columns)")
 
-    # --- metadata -----------------------------------------------
-    meta_lines = [
+    # Save metadata
+    meta = [
         f"Download timestamp : {datetime.now().isoformat()}",
-        f"Source URL         : {BASE_URL}",
+        f"Source             : {BASE_URL}",
         f"Total records      : {len(all_records):,}",
         f"Total columns      : {len(df.columns)}",
         f"Output file        : {OUT_FILE}",
         f"Columns            : {', '.join(df.columns.tolist())}",
     ]
-    with open(META_FILE, "w") as f:
-        f.write("\n".join(meta_lines))
-    log(f"Metadata saved  → {META_FILE}")
+    with open(META_FILE, "w") as fh:
+        fh.write("\n".join(meta))
+    log(f"Metadata saved → {META_FILE}")
     log("\n✓ Download complete.")
+
 
 if __name__ == "__main__":
     main()
