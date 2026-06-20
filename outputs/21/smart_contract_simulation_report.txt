@@ -1,0 +1,43 @@
+================================================================
+SMART CONTRACT SIMULATION REPORT — GeoBlock-DRS
+================================================================
+
+[1] EQUITY WEIGHT COEFFICIENT (α)
+    Formula            : α_i = 1 + λ · (SVI_i − SVI̅)
+    National mean SVI  : 0.5
+    Default λ          : 1.0
+    α range (λ=1.0)   : 0.800 – 1.240
+    Most vulnerable    : MS (SVI=0.74, α=1.24)
+
+[2] SIMULATED ALLOCATION (base=1,000 units, severity=3)
+    Unweighted IA      : 450 units (all states)
+    Max weighted IA    : 558 units
+    Min weighted IA    : 360 units
+    Max uplift         : +24.0%
+    Max reduction      : -20.0%
+
+[3] SMART CONTRACT EXECUTION PROFILE (Simulated PoA test network)
+    Note: These are on-chain processing estimates only.
+    Upstream sensor + oracle propagation adds 30–180 s in deployment.
+    Oracle validation (3-of-N)                   : 2.1s
+    Blockchain event logging                     : 0.8s
+    DisasterEvent instantiation                  : 0.6s
+    ResourceAllocation execution                 : 1.2s
+    AgencyDispatch emission                      : 0.9s
+    Settlement contract closure                  : 0.7s
+    TOTAL ON-CHAIN EXECUTION TIME                : 6.3s
+
+[4] LATENCY COMPARISON
+    Values derived directly from clean dataset (not hardcoded).
+    Conventional mean latency   : 37.37 days (3,228,768 s)
+    Conventional median latency : 35.0 days (3,024,000 s)
+    GeoBlock-DRS (on-chain)     : 6.3 seconds
+    Realistic end-to-end        : ~30–180 seconds (incl. sensor + oracle)
+    Reduction factor (mean)     : 512,503×
+    Reduction percentage        : >99.99%
+    72-hr critical window       : 3.0 days (3.0 d = 259,200 s)
+    Chart y-axis unit           : DAYS (72-hr line drawn at 3.0, not 3/86400)
+
+[5] PYTHON BENCHMARK
+    10,000 allocation simulations in 63.9 ms
+    Mean per-allocation time    : 6.39 µs

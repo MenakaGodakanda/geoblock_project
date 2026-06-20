@@ -1,0 +1,35 @@
+================================================================
+DATA QUALITY REPORT — GeoBlock-DRS Pipeline
+Generated: 2026-06-21T05:08:07.945446
+================================================================
+
+[1] RAW DATA
+    Rows    : 69,935
+    Columns : 28
+
+[2] DATE PARSING — null counts after parse:
+    declarationDate               : 0 nulls
+    incidentBeginDate             : 0 nulls
+    incidentEndDate               : 515 nulls
+
+[3] LATENCY — rows removed (outside 0–90 days): 1,932
+    Remaining rows: 68,003
+
+[4] FILTER
+    Declaration type  : DR (major disasters only)
+    Year range        : 2000–2025
+    Rows after filter : 28,934
+    Note: 2025 = most recent complete calendar year available in
+          the OpenFEMA API at time of analysis (June 2026).
+          Records with declarationDate in Jan 2026 (arising from
+          Dec 2025 incidents) are correctly excluded.
+
+[5] MISSING VALUES (final clean dataset):
+
+[6] FINAL CLEAN DATASET
+    Rows    : 28,934
+    Columns : 18
+    Cohorts : ['2000–2004', '2005–2009', '2010–2014', '2015–2019', '2020–2025']
+    Note: The 2020–2025 cohort spans six years (2020–2024 = five
+          complete years + 2025 = sixth year) to include the most
+          recent complete calendar year in the analysis window.
