@@ -1,0 +1,13 @@
+Table 1. Top Incident Types in FEMA Major Disaster Declarations (2000–2025)
+----------------------------------------------------------------------------------------
+   Incident Type  Declarations  % of Total  Cumulative %  Mean Latency (d)  Median Latency (d)
+ Severe Storm(s)         13060        52.7          52.7              34.7                31.0
+       Hurricane          4466        18.0          70.7              12.1                 5.0
+           Flood          2976        12.0          82.7              43.1                45.0
+Severe Ice Storm          1578         6.4          89.1              24.7                17.0
+   Fire/Wildfire           903         3.6          92.7              41.7                45.0
+Other (combined)          1795         7.2         100.0              39.7                37.2
+           TOTAL         24778       100.0         100.0              31.8                27.0
+----------------------------------------------------------------------------------------
+Source: Authors' analysis of OpenFEMA Disaster Declarations Summaries v2.
+Latency = declarationDate − incidentBeginDate (capped at 90 days).
